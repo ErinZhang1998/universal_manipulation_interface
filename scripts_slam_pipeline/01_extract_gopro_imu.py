@@ -19,7 +19,7 @@ from tqdm import tqdm
 
 # %%
 @click.command()
-@click.option('-d', '--docker_image', default="chicheng/openicc:latest")
+@click.option('-d', '--docker_image', default="chicheng/openicc:latest") 
 @click.option('-n', '--num_workers', type=int, default=None)
 @click.option('-np', '--no_docker_pull', is_flag=True, default=False, help="pull docker image from docker hub")
 @click.argument('session_dir', nargs=-1)
@@ -93,7 +93,7 @@ def main(docker_image, num_workers, no_docker_pull, session_dir):
                 pbar.update(len(completed))
 
         print("Done! Result:")
-        print([x.result() for x in completed])
+        print([x.result().returncode for x in completed])
 
 # %%
 if __name__ == "__main__":

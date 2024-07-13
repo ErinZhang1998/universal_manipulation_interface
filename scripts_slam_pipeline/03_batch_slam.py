@@ -39,12 +39,16 @@ def runner(cmd, cwd, stdout_path, stderr_path, timeout, **kwargs):
 @click.command()
 @click.option('-i', '--input_dir', required=True, help='Directory for demos folder')
 @click.option('-m', '--map_path', default=None, help='ORB_SLAM3 *.osa map atlas file')
-@click.option('-d', '--docker_image', default="chicheng/orb_slam3:latest")
+@click.option('-d', '--docker_image', default="erinzhang1998/orbslam:latest")
+@click.option('-mk', '--slam_mask_path')
 @click.option('-n', '--num_workers', type=int, default=None)
 @click.option('-ml', '--max_lost_frames', type=int, default=60)
+@click.option('-stf', '--start_track_frame', type=int, default=0)
 @click.option('-tm', '--timeout_multiple', type=float, default=16, help='timeout_multiple * duration = timeout')
 @click.option('-np', '--no_docker_pull', is_flag=True, default=False, help="pull docker image from docker hub")
-def main(input_dir, map_path, docker_image, num_workers, max_lost_frames, timeout_multiple, no_docker_pull):
+@click.option('-st', '--setting_file', default="/home/ORB_SLAM3/Examples/Monocular-Inertial/gopro9_calibrated.yaml")
+
+def main(input_dir, map_path, docker_image, slam_mask_path, num_workers, max_lost_frames, start_track_frame, timeout_multiple, no_docker_pull, setting_file):
     input_dir = pathlib.Path(os.path.expanduser(input_dir)).absolute()
     input_video_dirs = [x.parent for x in input_dir.glob('demo*/raw_video.mp4')]
     input_video_dirs += [x.parent for x in input_dir.glob('map*/raw_video.mp4')]
@@ -95,10 +99,8 @@ def main(input_dir, map_path, docker_image, num_workers, max_lost_frames, timeou
                     video = container.streams.video[0]
                     duration_sec = float(video.duration * video.time_base)
                 timeout = duration_sec * timeout_multiple
-                
-                slam_mask = np.zeros((2028, 2704), dtype=np.uint8)
-                slam_mask = draw_predefined_mask(
-                    slam_mask, color=255, mirror=True, gripper=False, finger=True)
+
+                slam_mask = cv2.imread(slam_mask_path)
                 cv2.imwrite(str(mask_write_path.absolute()), slam_mask)
 
                 map_mount_source = map_path
@@ -114,13 +116,14 @@ def main(input_dir, map_path, docker_image, num_workers, max_lost_frames, timeou
                     docker_image,
                     '/ORB_SLAM3/Examples/Monocular-Inertial/gopro_slam',
                     '--vocabulary', '/ORB_SLAM3/Vocabulary/ORBvoc.txt',
-                    '--setting', '/ORB_SLAM3/Examples/Monocular-Inertial/gopro10_maxlens_fisheye_setting_v1_720.yaml',
+                    '--setting', setting_file,
                     '--input_video', str(video_path),
                     '--input_imu_json', str(json_path),
                     '--output_trajectory_csv', str(csv_path),
                     '--load_map', str(map_mount_target),
                     '--mask_img', str(mask_path),
-                    '--max_lost_frames', str(max_lost_frames)
+                    '--max_lost_frames', str(max_lost_frames),
+                    '--start_track_frame', str(start_track_frame),
                 ]
 
                 stdout_path = video_dir.joinpath('slam_stdout.txt')
@@ -134,12 +137,18 @@ def main(input_dir, map_path, docker_image, num_workers, max_lost_frames, timeou
 
                 futures.add(executor.submit(runner,
                     cmd, str(video_dir), stdout_path, stderr_path, timeout))
-                # print(' '.join(cmd))
+                print(' '.join(cmd))
 
             completed, futures = concurrent.futures.wait(futures)
             pbar.update(len(completed))
 
     print("Done! Result:")
+    for x in completed:
+        try:
+            print(x.result().returncode)
+        except:
+            print(x.result())
+    # print([x.result().returncode for x in completed])
     print([x.result() for x in completed])
 
 # %%

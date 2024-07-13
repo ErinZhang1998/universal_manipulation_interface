@@ -45,22 +45,6 @@ def main(session_dir):
             '--keyframe_only'
         ]
         subprocess.run(cmd)
-        
-        # run gripper range calibration
-        script_path = script_dir.joinpath('calibrate_gripper_range.py')
-        assert script_path.is_file()
-        
-        for gripper_dir in demos_dir.glob("gripper_calibration*"):
-            gripper_range_path = gripper_dir.joinpath('gripper_range.json')
-            tag_path = gripper_dir.joinpath('tag_detection.pkl')
-            assert tag_path.is_file()
-            cmd = [
-                'python', str(script_path),
-                '--input', str(tag_path),
-                '--output', str(gripper_range_path)
-            ]
-            subprocess.run(cmd)
-
             
 # %%
 if __name__ == "__main__":

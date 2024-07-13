@@ -19,7 +19,8 @@ import subprocess
 @click.command()
 @click.argument('session_dir', nargs=-1)
 @click.option('-c', '--calibration_dir', type=str, default=None)
-def main(session_dir, calibration_dir):
+@click.option('-mk', '--slam_mask_path', type=str)
+def main(session_dir, calibration_dir, slam_mask_path):
     script_dir = pathlib.Path(__file__).parent.joinpath('scripts_slam_pipeline')
     if calibration_dir is None:
         calibration_dir = pathlib.Path(__file__).parent.joinpath('example', 'calibration')
@@ -45,7 +46,8 @@ def main(session_dir, calibration_dir):
         assert script_path.is_file()
         cmd = [
             'python', str(script_path),
-            str(session)
+            '-np',
+            str(session),
         ]
         result = subprocess.run(cmd)
         assert result.returncode == 0
@@ -60,8 +62,11 @@ def main(session_dir, calibration_dir):
         if not map_path.is_file():
             cmd = [
                 'python', str(script_path),
+                '-np',
                 '--input_dir', str(mapping_dir),
-                '--map_path', str(map_path)
+                '--map_path', str(map_path),
+                '--slam_mask_path', str(slam_mask_path),
+                '--setting_file', '/ORB_SLAM3/Examples/Monocular-Inertial/gopro10_maxlens_fisheye_setting_v1_720_orig.yaml',
             ]
             result = subprocess.run(cmd)
             assert result.returncode == 0
@@ -72,8 +77,11 @@ def main(session_dir, calibration_dir):
         assert script_path.is_file()
         cmd = [
             'python', str(script_path),
+            '-np',
             '--input_dir', str(demo_dir),
-            '--map_path', str(map_path)
+            '--map_path', str(map_path),
+            '--slam_mask_path', str(slam_mask_path),
+            '--setting_file', '/ORB_SLAM3/Examples/Monocular-Inertial/gopro10_maxlens_fisheye_setting_v1_720_orig.yaml',
         ]
         result = subprocess.run(cmd)
         assert result.returncode == 0

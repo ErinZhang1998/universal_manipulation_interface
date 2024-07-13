@@ -25,10 +25,13 @@ from umi.common.cv_util import draw_predefined_mask
 @click.command()
 @click.option('-i', '--input_dir', required=True, help='Directory for mapping video')
 @click.option('-m', '--map_path', default=None, help='ORB_SLAM3 *.osa map atlas file')
-@click.option('-d', '--docker_image', default="chicheng/orb_slam3:latest")
+@click.option('-d', '--docker_image', default="erinzhang1998/orbslam:latest")
 @click.option('-np', '--no_docker_pull', is_flag=True, default=False, help="pull docker image from docker hub")
 @click.option('-nm', '--no_mask', is_flag=True, default=False, help="Whether to mask out gripper and mirrors. Set if map is created with bare GoPro no on gripper.")
-def main(input_dir, map_path, docker_image, no_docker_pull, no_mask):
+@click.option('-mk', '--slam_mask_path')
+@click.option('-st', '--setting_file', default="/home/ORB_SLAM3/Examples/Monocular-Inertial/gopro9_calibrated.yaml")
+
+def main(input_dir, map_path, docker_image, no_docker_pull, no_mask, slam_mask_path, setting_file):
     video_dir = pathlib.Path(os.path.expanduser(input_dir)).absolute()
     for fn in ['raw_video.mp4', 'imu_data.json']:
         assert video_dir.joinpath(fn).is_file()
@@ -59,9 +62,7 @@ def main(input_dir, map_path, docker_image, no_docker_pull, no_mask):
     mask_path = mount_target.joinpath('slam_mask.png')
     if not no_mask:
         mask_write_path = video_dir.joinpath('slam_mask.png')
-        slam_mask = np.zeros((2028, 2704), dtype=np.uint8)
-        slam_mask = draw_predefined_mask(
-            slam_mask, color=255, mirror=True, gripper=False, finger=True)
+        slam_mask = cv2.imread(slam_mask_path)
         cv2.imwrite(str(mask_write_path.absolute()), slam_mask)
 
     map_mount_source = pathlib.Path(map_path)
@@ -77,7 +78,7 @@ def main(input_dir, map_path, docker_image, no_docker_pull, no_mask):
         docker_image,
         '/ORB_SLAM3/Examples/Monocular-Inertial/gopro_slam',
         '--vocabulary', '/ORB_SLAM3/Vocabulary/ORBvoc.txt',
-        '--setting', '/ORB_SLAM3/Examples/Monocular-Inertial/gopro10_maxlens_fisheye_setting_v1_720.yaml',
+        '--setting', setting_file,
         '--input_video', str(video_path),
         '--input_imu_json', str(json_path),
         '--output_trajectory_csv', str(csv_path),
@@ -90,13 +91,17 @@ def main(input_dir, map_path, docker_image, no_docker_pull, no_mask):
 
     stdout_path = video_dir.joinpath('slam_stdout.txt')
     stderr_path = video_dir.joinpath('slam_stderr.txt')
-
+    cmd_str = ""
+    for c in cmd:
+        cmd_str += c + " "
+    print(cmd_str)
     result = subprocess.run(
         cmd,
         cwd=str(video_dir),
         stdout=stdout_path.open('w'),
         stderr=stderr_path.open('w')
     )
+    print(result.returncode)
     print(result)
 
 
